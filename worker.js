@@ -39,7 +39,7 @@ export default {
         } else {
           const rawText = await request.text();
           const params = new URLSearchParams(rawText);
-          paymentId = params.get("id") || rawText || "";
+          paymentId = params.get("id") || "";
         }
 
         if (!paymentId) {
@@ -81,9 +81,9 @@ export default {
         const amount = payment.amount?.value || "";
         const currency = payment.amount?.currency || "EUR";
 
-        const logoUrl = env.LOGO_URL || "https://www.interglobe.be/logo.png";
-        const fromEmail = env.FROM_EMAIL || "InterGlobe <info@interglobe.be>";
+        const fromEmail = env.FROM_EMAIL || "InterGlobe <mail@interglobe.be>";
         const adminEmail = env.ADMIN_EMAIL || "info@interglobe.be";
+        const signatureEmail = env.SIGNATURE_EMAIL || "info@interglobe.be";
 
         if (customerEmail) {
           await sendEmailWithResend({
@@ -91,17 +91,18 @@ export default {
             to: customerEmail,
             subject: `Confirmation de votre réservation - ${reservationNumber}`,
             html: getCustomerEmailHtml({
-              logoUrl,
               reservationNumber,
               amount,
               currency,
-              vehicle
+              vehicle,
+              signatureEmail
             }),
             text: getCustomerEmailText({
               reservationNumber,
               amount,
               currency,
-              vehicle
+              vehicle,
+              signatureEmail
             }),
             idempotencyKey: `payment-${payment.id}-customer-confirmation`
           });
@@ -172,7 +173,7 @@ export default {
         const mollieResponse = await fetch("https://api.mollie.com/v2/payments", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${env.MOLLIE_API_KEY}`,
+            "Authorization": `Bearer ${env.MOLLIE_API_KEY}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
@@ -245,7 +246,7 @@ async function sendEmailWithResend({ env, to, subject, html, text, idempotencyKe
       "Idempotency-Key": idempotencyKey
     },
     body: JSON.stringify({
-      from: env.FROM_EMAIL || "InterGlobe <info@interglobe.be>",
+      from: env.FROM_EMAIL || "InterGlobe <mail@interglobe.be>",
       to,
       subject,
       html,
@@ -262,7 +263,7 @@ async function sendEmailWithResend({ env, to, subject, html, text, idempotencyKe
   return result;
 }
 
-function getCustomerEmailHtml({ logoUrl, reservationNumber, amount, currency, vehicle }) {
+function getCustomerEmailHtml({ reservationNumber, amount, currency, vehicle, signatureEmail }) {
   return `
   <!DOCTYPE html>
   <html lang="fr">
@@ -277,13 +278,10 @@ function getCustomerEmailHtml({ logoUrl, reservationNumber, amount, currency, ve
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px; background-color:#ffffff; border-radius:14px; overflow:hidden;">
             <tr>
-              <td align="center" style="background-color:#17365d; padding:30px 20px;">
-                <img
-                  src="${escapeHtml(logoUrl)}"
-                  alt="InterGlobe"
-                  width="220"
-                  style="display:block; max-width:220px; width:100%; height:auto; border:0;"
-                />
+              <td style="background-color:#17365d; padding:24px 30px; text-align:center;">
+                <div style="font-size:28px; font-weight:bold; color:#ffffff; letter-spacing:0.5px;">
+                  InterGlobe
+                </div>
               </td>
             </tr>
 
@@ -344,7 +342,7 @@ function getCustomerEmailHtml({ logoUrl, reservationNumber, amount, currency, ve
                 <strong style="color:#17365d;">InterGlobe</strong><br />
                 Driving your success forward<br /><br />
                 Leuvensesteenweg 270 - 1932 Zaventem - Belgique<br />
-                info@interglobe.be - 0032/472.31.73.11<br />
+                ${escapeHtml(signatureEmail)} - 0032/472.31.73.11<br />
                 <a href="https://www.interglobe.be" style="color:#17365d; text-decoration:none; font-weight:bold;">www.interglobe.be</a>
               </td>
             </tr>
@@ -357,7 +355,7 @@ function getCustomerEmailHtml({ logoUrl, reservationNumber, amount, currency, ve
   `;
 }
 
-function getCustomerEmailText({ reservationNumber, amount, currency, vehicle }) {
+function getCustomerEmailText({ reservationNumber, amount, currency, vehicle, signatureEmail }) {
   return `Votre paiement est confirmé
 
 Merci pour votre réservation.
@@ -372,7 +370,7 @@ InterGlobe
 Driving your success forward
 
 Leuvensesteenweg 270 - 1932 Zaventem - Belgique
-info@interglobe.be
+${signatureEmail}
 0032/472.31.73.11
 www.interglobe.be`;
 }
